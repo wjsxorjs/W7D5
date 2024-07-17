@@ -13,7 +13,6 @@ import javax.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -39,6 +38,8 @@ public class BbsController {
 	private HttpServletRequest request;
 	@Autowired
 	private ServletContext application;
+	@Autowired
+	private HttpSession session;
 	
 	private String editor_img = "/resources/editor_img"; // 썸머노트 이미지 추가할 때 저장할 위치
 
@@ -51,7 +52,6 @@ public class BbsController {
 	
 	private String prevFile_name, prevOri_name;
 	
-	private List<String> IP_list;
 
 	@RequestMapping("/list")
 	public ModelAndView list(String cPage, String bname) {
@@ -194,52 +194,40 @@ public class BbsController {
 		prevFile_name = null;
 		prevOri_name = null;
 		
-		HttpSession session = request.getSession();
-		Object obj = session.getAttribute("ip_list");
+		
+		List<BbsVO> list = null;
+		// 세션으로부터 r_list라는 이름으로 저장된 객체를 얻어낸다.
+		Object obj = session.getAttribute("r_list");
+		
 		if(obj != null) {
-			Map<String, List<String>> IP_lists = (HashMap<String, List<String>>) obj;
-			IP_list = IP_lists.get(b_idx);
-			String my_ip = request.getRemoteAddr();
-			int result = 1;
-
-			System.out.println("my_ip"+my_ip);
-			if(IP_list != null) {
-				for(String ip: IP_list) {
-					System.out.println("ip"+ip);
-					System.out.println("my_ip"+my_ip);
-					if(ip.equals(my_ip)) {
-						result = 0;
-						break;
-					}
-				}
-				
-				if(result == 1) {
-					b_dao.hit(b_idx);
-					IP_list.add(my_ip);
-					IP_lists.replace(b_idx, IP_list);
-					session.setAttribute("ip_list", IP_lists);
-				}
-			} else {
-				b_dao.hit(b_idx);
-				IP_list = new ArrayList<String>();
-				IP_list.add(my_ip);
-				Map<String, List<String>> ip_list = new HashMap<String, List<String>>();
-				ip_list.put(b_idx, IP_list);
-				session.setAttribute("ip_list", ip_list);
-			}
+			list = (List<BbsVO>) obj;
 		} else {
-			String my_ip = request.getRemoteAddr();
+			list = new ArrayList<BbsVO>();
+			session.setAttribute("r_list", list);
+		}
+		
+		// 이제 list에서 인자로 받은 b_idx값과 같은 값을 가진 BbsVO를 검색한다.
+		// 만약 있다면 hit를 증가하면 안된다.
+		
+		boolean chk = true;
+		
+		for(BbsVO bvo: list) {
+			if(bvo.getB_idx().equals(b_idx)) {
+				chk = false;
+				break;
+			}
+		} // for문의 끝
+		if(chk) {
 			b_dao.hit(b_idx);
-			IP_list = new ArrayList<String>();
-			IP_list.add(my_ip);
-			Map<String, List<String>> ip_list = new HashMap<String, List<String>>();
-			ip_list.put(b_idx, IP_list);
-			session.setAttribute("ip_list", ip_list);
 		}
 		
 		ModelAndView mv = new ModelAndView();
 		
-		BbsVO bvo = b_dao.getView(b_idx);
+		BbsVO bvo =  b_dao.getView(b_idx);
+		
+		if(chk) {
+			list.add(bvo);
+		}
 		
 		prevFile_name = bvo.getFile_name();
 		prevOri_name = bvo.getOri_name();

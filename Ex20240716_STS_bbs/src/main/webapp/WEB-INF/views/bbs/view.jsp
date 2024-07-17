@@ -136,6 +136,7 @@
 		<input type="hidden" name="type" value="del" />
 		<input type="hidden" name="file_name"/>
 		<input type="hidden" name="source" value="view"/>
+		<input type="hidden" name="dir" value="/resources/upload"/>
 		<input type="hidden" name="bname" value="${param.bname}" />
 		<input type="hidden" name="b_idx" value="${param.b_idx}" />
 		<input type="hidden" name="cPage" value="${param.cPage}" />
@@ -162,7 +163,7 @@
 			// 이것을 현재 문서 안에 있는 frm이라는 폼 객체에 이름이
 			// fname이라는 hidden요소의 값(value)으로 지정해둔다.
 			document.frm.file_name.value = file_name;
-			document.frm.action = "down";
+			document.frm.action = "FileDownload";
 			document.frm.submit();
 		}
 	</script>
