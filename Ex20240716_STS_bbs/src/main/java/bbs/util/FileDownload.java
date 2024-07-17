@@ -38,7 +38,7 @@ public class FileDownload extends HttpServlet {
 		
 		// dir은 파일이 저장된 위치를 의미한다. 이것을 절대경로화 시킨다.
 		ServletContext application = getServletContext();
-		String realPath = application.getRealPath(dir);
+		String realPath = application.getRealPath("resources/"+dir);
 		String wholePath = realPath + System.getProperty("file.separator")+filename;
 		
 		// 전체경로 만들어서 File 생성
