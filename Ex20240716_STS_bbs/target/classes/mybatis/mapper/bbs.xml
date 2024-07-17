@@ -49,7 +49,7 @@
 	
 
 	<!-- 조회수 증가 -->
-	<update id="hitInc" parameterType="String">
+	<update id="hit" parameterType="String">
 		UPDATE bbs_t
 		SET hit = hit+1
 		WHERE b_idx = #{b_idx}
@@ -61,9 +61,9 @@
 		<trim prefix="SET" suffixOverrides=",">
 			subject = #{subject},
 			content = #{content},
-			<if test="fname != null">
-				file_name = #{fname},
-				ori_name = #{oname}
+			<if test="file_name != '' and file_name != null">
+				file_name = #{file_name},
+				ori_name = #{ori_name}
 			</if>
 		</trim>
 		WHERE b_idx = #{b_idx}

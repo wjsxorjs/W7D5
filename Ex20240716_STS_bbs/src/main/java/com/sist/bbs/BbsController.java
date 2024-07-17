@@ -2,11 +2,14 @@ package com.sist.bbs;
 
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -45,6 +48,10 @@ public class BbsController {
 	int numPerPage = 5;
 	int pagePerBlock = 3;
 	int totalRecord;
+	
+	private String prevFile_name, prevOri_name;
+	
+	private List<String> IP_list;
 
 	@RequestMapping("/list")
 	public ModelAndView list(String cPage, String bname) {
@@ -142,7 +149,7 @@ public class BbsController {
 			
 		}
 		ModelAndView mv = new ModelAndView();
-		mv.setViewName("redirect:list?bname"+bvo.getBname());
+		mv.setViewName("redirect:/list?bname"+bvo.getBname());
 		return mv;
 	}
 	
@@ -184,9 +191,59 @@ public class BbsController {
 	@RequestMapping("/view")
 	public ModelAndView view(String b_idx, String bname) {
 		
+		prevFile_name = null;
+		prevOri_name = null;
+		
+		HttpSession session = request.getSession();
+		Object obj = session.getAttribute("ip_list");
+		if(obj != null) {
+			Map<String, List<String>> IP_lists = (HashMap<String, List<String>>) obj;
+			IP_list = IP_lists.get(b_idx);
+			String my_ip = request.getRemoteAddr();
+			int result = 1;
+
+			System.out.println("my_ip"+my_ip);
+			if(IP_list != null) {
+				for(String ip: IP_list) {
+					System.out.println("ip"+ip);
+					System.out.println("my_ip"+my_ip);
+					if(ip.equals(my_ip)) {
+						result = 0;
+						break;
+					}
+				}
+				
+				if(result == 1) {
+					b_dao.hit(b_idx);
+					IP_list.add(my_ip);
+					IP_lists.replace(b_idx, IP_list);
+					session.setAttribute("ip_list", IP_lists);
+				}
+			} else {
+				b_dao.hit(b_idx);
+				IP_list = new ArrayList<String>();
+				IP_list.add(my_ip);
+				Map<String, List<String>> ip_list = new HashMap<String, List<String>>();
+				ip_list.put(b_idx, IP_list);
+				session.setAttribute("ip_list", ip_list);
+			}
+		} else {
+			String my_ip = request.getRemoteAddr();
+			b_dao.hit(b_idx);
+			IP_list = new ArrayList<String>();
+			IP_list.add(my_ip);
+			Map<String, List<String>> ip_list = new HashMap<String, List<String>>();
+			ip_list.put(b_idx, IP_list);
+			session.setAttribute("ip_list", ip_list);
+		}
+		
 		ModelAndView mv = new ModelAndView();
 		
 		BbsVO bvo = b_dao.getView(b_idx);
+		
+		prevFile_name = bvo.getFile_name();
+		prevOri_name = bvo.getOri_name();
+		
 		
 		mv.addObject("bvo", bvo);
 		mv.setViewName(bname+"/view");
@@ -194,7 +251,7 @@ public class BbsController {
 		return mv;
 	}
 
-	@RequestMapping("/comm")
+	@RequestMapping(value="/comm",method=RequestMethod.POST)
 	public ModelAndView comm(String b_idx, String bname, String cPage, CommVO cvo) {
 		ModelAndView mv = new ModelAndView();
 		
@@ -203,12 +260,102 @@ public class BbsController {
 		
 		b_dao.addComm(cvo);
 
-		mv.setViewName("redirect:view?b_idx="+b_idx+"&bname="+bname+"&cPage="+cPage);
+		StringBuffer sb = new StringBuffer("redirect:/view?b_idx=");
+		sb.append(b_idx);
+		sb.append("&bname=");
+		sb.append(bname);
+		sb.append("&cPage=");
+		sb.append(cPage);
+		
+		String viewName = sb.toString();
+		
+		mv.setViewName(viewName);
 		
 		
 		return mv;
 	}
+
+//	@RequestMapping("/edit")
+//	public ModelAndView edit(String b_idx, String bname) {
+//		ModelAndView mv = new ModelAndView();
+//		
+//		BbsVO bvo = b_dao.getView(b_idx);
+//		
+//		mv.addObject("bvo", bvo);
+//		mv.setViewName(bname+"/edit");
+//		return mv;
+//	}
+//
+//	@RequestMapping(value="/edit_bbs", method=RequestMethod.POST)
+//	public ModelAndView edit(BbsVO bvo) {
+//		ModelAndView mv = new ModelAndView();
+//		
+//		MultipartFile f = bvo.getFile();
+//		String f_name = f.getOriginalFilename();
+//		
+//		
+//		
+//		if(!f.isEmpty()) {
+//			bvo.setOri_name(f_name);
+//			String realPath = application.getRealPath(upload);
+//			String fname = FileRenameUtil.checkSameFileName(f_name, realPath);
+//			bvo.setFile_name(fname);
+//		}
+//		
+//		
+//		b_dao.edit(bvo);
+//		
+//		mv.addObject("bvo", bvo);
+//		mv.setViewName(bvo.getBname()+"/view");
+//		return mv;
+//	}
 	
+	@RequestMapping("/edit")
+	public ModelAndView edit(String b_idx, String bname, String cPage, BbsVO bvo) {
+		ModelAndView mv = new ModelAndView();
+		String c_type = request.getContentType();
+		if(c_type.startsWith("application")) {
+			// c_type = "application"으로 edit.jsp로 이동
+			BbsVO b_vo = b_dao.getView(b_idx);
+			
+			mv.addObject("bvo", b_vo);
+			mv.setViewName(bname+"/edit");
+			
+		} else {
+			// c_type = "multipart"로 DB작업 필요
+			MultipartFile f = bvo.getFile();
+			
+			if(!f.isEmpty()) {
+				String realPath = application.getRealPath(upload);
+				
+				String fname = f.getOriginalFilename();
+				bvo.setOri_name(fname);
+				// 이미 존재하는 파일명이면 이름을 변경
+				fname = FileRenameUtil.checkSameFileName(fname, realPath);
+				try {
+					f.transferTo(new File(realPath, fname)); // 실제 업로드
+					bvo.setFile_name(fname);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			} else {
+				bvo.setFile_name(prevFile_name);
+				bvo.setOri_name(prevOri_name);
+			}
+			
+			// mybatis에게 VO객체를 주면서 수정하라고 한다.
+			b_dao.edit(bvo);
+						
+			// BbsVO b_vo = b_dao.getView(bvo.getB_idx());
+			
+//			mv.addObject("bvo", bvo);
+			
+			mv.setViewName("redirect:/view?b_idx="+bvo.getB_idx()+"&bname="+bvo.getBname()+"&cPage="+cPage);
+			
+		}
+		
+		return mv;
+	}
 	
 	
 }

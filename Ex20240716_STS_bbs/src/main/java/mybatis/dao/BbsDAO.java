@@ -33,17 +33,9 @@ public class BbsDAO {
 		return bvo;
 	}
 	
-	public int hitInc(String b_idx) {
+	public int hit(String b_idx) {
 		
-		int chk = ss.update("bbs.hitInc",b_idx);
-		
-		if(chk > 0) {
-			ss.commit();
-		} else {
-			ss.rollback();
-		}
-		
-		return chk;
+		return ss.update("bbs.hit",b_idx);
 	}
 	
 	public BbsVO[] getList(String bname, int begin, int end) {
@@ -82,42 +74,17 @@ public int addComm(CommVO cvo) {
 	
 	// 원글 수정
 	
-	public int edit (String b_idx, String subject, String content,
-							String fname, String oname, String ip) {
-		Map<String, String> e_map = new HashMap<String,String>();
-		e_map.put("b_idx", b_idx);
-		e_map.put("subject", subject);
-		e_map.put("content", content);
-		if(fname != null) {
-			e_map.put("fname", fname);
-			e_map.put("oname", oname);
-		}
-		e_map.put("ip", ip);
+	public int edit (BbsVO bvo) {
 		
-		int chk = ss.update("bbs.edit",e_map);
-		if(chk>0) {
-			ss.commit();
-		} else {
-			ss.rollback();
-		}
-
-		
-		return chk;
+		return ss.update("bbs.edit",bvo);
 	}
 								
 	
 	
 	public int delBbs(String b_idx) {
 		
-		int chk = ss.update("bbs.delBbs",b_idx);
+		return ss.update("bbs.delBbs",b_idx);
 		
-		if(chk > 0) {
-			ss.commit();
-		} else {
-			ss.rollback();
-		}
-		
-		return chk;
 	}
 	
 	
